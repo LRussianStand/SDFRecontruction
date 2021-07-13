@@ -9,15 +9,6 @@ import plyfile
 import skimage.measure
 import time
 import torch
-from pytorch3d.io import load_obj, save_obj, load_ply
-from pytorch3d.structures import Meshes
-from pytorch3d.ops import sample_points_from_meshes
-from pytorch3d.loss import (
-    chamfer_distance,
-    mesh_edge_loss,
-    mesh_laplacian_smoothing,
-    mesh_normal_consistency,
-)
 
 def decode_sdf(decoder, embd_xyz, queries):
     """输入 模型，空间变换函数，坐标queries shape （P,n）,返回 sdf距离 （P,1)"""
@@ -190,31 +181,5 @@ def GenMeshfromSDF(grid_final,bounding_radius,path):
         voxel_size,
         path,
     )
-
-def CalChamferDis(path,path_gt):
-    # path_gt = '/mnt/data3/lj/transparent/Data/Shapes/test/Shape__3/poissonSubd.ply'
-    if '.obj' in path_gt:
-
-        verts_gt, faces_gt, aux_gt = load_obj(path_gt)
-        faces_idx_gt = faces_gt.verts_idx.cuda().detach()
-        verts_gt = verts_gt.cuda().detach()
-    else:
-        verts_gt, faces_gt = load_ply(path_gt)
-        faces_idx_gt = faces_gt.cuda().detach()
-        verts_gt = verts_gt.cuda().detach()
-
-    verts_out, faces_out = load_ply(path)
-
-    faces_idx_out = faces_out.cuda().detach()
-    verts_out = verts_out.cuda().detach()
-
-    mesh_gt = Meshes(verts=[verts_gt], faces=[faces_idx_gt])
-    mesh_out = Meshes(verts=[verts_out], faces=[faces_idx_out])
-
-    sample_gt = sample_points_from_meshes(mesh_gt, int(1e6))
-    sample_out = sample_points_from_meshes(mesh_out, int(1e6))
-
-    loss_chamfer_out, _ = chamfer_distance(sample_gt, sample_out)
-    return loss_chamfer_out.item()
 
 
