@@ -176,16 +176,18 @@ if __name__ == "__main__":
         channelNum = imBgBatch.shape[1]#3
         # Speed up
         # torch.backends.cudnn.benchmark = True
-        R, T = cameras.look_at_view_transform(eye=originBatch.cpu().numpy(), up=upBatch.cpu().numpy(),
-                                              at=lookatBatch.cpu().numpy())#, device=device
-        focal_length_pixel = opt.imageWidth / 2 / (np.tan(opt.fov / 2 / 180 * np.pi))
-        cameras_bs = cameras.PerspectiveCameras(focal_length=focal_length_pixel,
-                                                principal_point=np.tile(np.array((opt.imageWidth / 2, opt.imageHeight / 2)),
-                                                                        (opt.camNum, 1)), R=R, T=T,
-                                                image_size=np.tile(np.array((opt.imageWidth, opt.imageHeight)),
-                                                                        (opt.camNum, 1)))
-        bs_coord = paddle.linspace(0,opt.camNum - 1,opt.camNum)
-        bs_coord = paddle.reshape(bs_coord, [opt.camNum,1,1]).repeat((1,opt.imageHeight,opt.imageWidth)).long()
+        # change by m
+        # R, T = cameras.look_at_view_transform(eye=originBatch.cpu().numpy(), up=upBatch.cpu().numpy(),
+        #                                       at=lookatBatch.cpu().numpy())#, device=device
+        # focal_length_pixel = opt.imageWidth / 2 / (np.tan(opt.fov / 2 / 180 * np.pi))
+        # cameras_bs = cameras.PerspectiveCameras(focal_length=focal_length_pixel,
+        #                                         principal_point=np.tile(np.array((opt.imageWidth / 2, opt.imageHeight / 2)),
+        #                                                                 (opt.camNum, 1)), R=R, T=T,
+        #                                         image_size=np.tile(np.array((opt.imageWidth, opt.imageHeight)),
+        #                                                                 (opt.camNum, 1)))
+        # bs_coord = paddle.linspace(0,opt.camNum - 1,opt.camNum)
+        # bs_coord = paddle.reshape(bs_coord, [opt.camNum,1,1]).repeat((1,opt.imageHeight,opt.imageWidth)).long()
+
 
         #test the camera projection
         # verts_gt, faces_gt, aux_gt = load_obj('/mnt/data3/lj/transparent/Data/Shapes/test/Shape__0/object.obj')
@@ -342,11 +344,13 @@ if __name__ == "__main__":
             coord_z = paddle.linspace(0, grid_res_z - 1, grid_res_z).cuda() * voxel_size + bounding_box_min_z
             grid_x,grid_y,grid_z = paddle.meshgrid([coord_x,coord_y,coord_z])
             grid_xyz = paddle.stack((grid_x,grid_y,grid_z),dim=-1)
-            grid_proj = cameras_bs.transform_points_screen(points=grid_xyz.repeat(opt.camNum,1,1,1,1).reshape(opt.camNum, -1, 3),
-                                    image_size=np.tile(np.array((width, height)),(opt.camNum, 1))).reshape(opt.camNum,grid_res_x,grid_res_y,grid_res_z,3)
-            grid_bs = paddle.linspace(0,opt.camNum - 1, opt.camNum).reshape(opt.camNum,1,1,1).repeat(1,grid_res_x,grid_res_y,grid_res_z).long()
-            grid_mask_gt = (seg1Batch.permute(0,2,3,1).squeeze(-1)[grid_bs,grid_proj[:,:,:,:,1].long().clamp(0,opt.imageHeight - 1),opt.imageWidth - 1 - grid_proj[:,:,:,:,0].long().clamp(0,opt.imageWidth - 1)] == 1).float()
-            grid_mask_gt = (grid_mask_gt.sum(dim = 0) > opt.camNum - 1)
+
+            # change by m
+            # grid_proj = cameras_bs.transform_points_screen(points=grid_xyz.repeat(opt.camNum,1,1,1,1).reshape(opt.camNum, -1, 3),
+            #                         image_size=np.tile(np.array((width, height)),(opt.camNum, 1))).reshape(opt.camNum,grid_res_x,grid_res_y,grid_res_z,3)
+            # grid_bs = paddle.linspace(0,opt.camNum - 1, opt.camNum).reshape(opt.camNum,1,1,1).repeat(1,grid_res_x,grid_res_y,grid_res_z).long()
+            # grid_mask_gt = (seg1Batch.permute(0,2,3,1).squeeze(-1)[grid_bs,grid_proj[:,:,:,:,1].long().clamp(0,opt.imageHeight - 1),opt.imageWidth - 1 - grid_proj[:,:,:,:,0].long().clamp(0,opt.imageWidth - 1)] == 1).float()
+            # grid_mask_gt = (grid_mask_gt.sum(dim = 0) > opt.camNum - 1)
 
             #watch_grid_mask = grid_mask_gt.cpu().numpy()
             #grid_proj_inside = (grid_proj[:,:,:,:,1] >= 0) * (grid_proj[:,:,:,:,1] <= opt.imageHeight - 1) * (grid_proj[:,:,:,:,0] >= 0) * (grid_proj[:,:,:,:,0] <= opt.imageWidth - 1)
@@ -451,12 +455,13 @@ if __name__ == "__main__":
 
                 # --------------------------------------------------------------------------------------------------
                 # the second enhanced mask loss!
-                if grid_res_z == opt.gridsize and opt.maskloss > 0:
-                    grid_initial.grad = paddle.where((grid_initial.data <= 0) & ( paddle.logical_not(grid_mask_gt)),
-                                                    - opt.maskloss * paddle.ones_like(grid_initial), grid_initial.grad)
-                    grid_initial.grad = paddle.where((grid_initial.data > 0) & grid_mask_gt,
-                                                    opt.maskloss * paddle.ones_like(grid_initial), grid_initial.grad)
-                    watch_grad_total = grid_initial.grad.cpu().numpy()
+                # change by m
+                # if grid_res_z == opt.gridsize and opt.maskloss > 0:
+                #     grid_initial.grad = paddle.where((grid_initial.data <= 0) & ( paddle.logical_not(grid_mask_gt)),
+                #                                     - opt.maskloss * paddle.ones_like(grid_initial), grid_initial.grad)
+                #     grid_initial.grad = paddle.where((grid_initial.data > 0) & grid_mask_gt,
+                #                                     opt.maskloss * paddle.ones_like(grid_initial), grid_initial.grad)
+                #     watch_grad_total = grid_initial.grad.cpu().numpy()
 
                 optimizer.step()
                 if grid_res_x == opt.gridsize:
