@@ -8,83 +8,11 @@ import numpy as np
 import plyfile
 import skimage.measure
 import time
-import torch
-
-def decode_sdf(decoder, embd_xyz, queries):
-    """输入 模型，空间变换函数，坐标queries shape （P,n）,返回 sdf距离 （P,1)"""
-    num_samples = queries.shape[0]
-    if embd_xyz is None:
-        input = queries
-    else:
-        input = embd_xyz(queries)
-    sdf = decoder(input)
-
-    return sdf
-
-
-def create_mesh(
-    decoder, embd_xyz, filename, N=256, max_batch=32 ** 3, offset=None, scale=None
-):
-    """将decoder（隐式表达）转化为ply文件"""
-    start = time.time()
-    ply_filename = filename
-
-    decoder.eval()
-
-    # NOTE: the voxel_origin is actually the (bottom, left, down) corner, not the middle
-    voxel_origin = [-1, -1, -1]
-    voxel_size = 2.0 / (N - 1)
-
-    overall_index = torch.arange(0, N ** 3, 1, out=torch.LongTensor())
-    samples = torch.zeros(N ** 3, 4)
-
-    # transform first 3 columns
-    # to be the x, y, z index
-    samples[:, 2] = overall_index % N
-    samples[:, 1] = (overall_index.long() // N) % N
-    samples[:, 0] = ((overall_index.long() // N) // N) % N
-
-    # transform first 3 columns
-    # to be the x, y, z coordinate
-    samples[:, 0] = (samples[:, 0] * voxel_size) + voxel_origin[2]
-    samples[:, 1] = (samples[:, 1] * voxel_size) + voxel_origin[1]
-    samples[:, 2] = (samples[:, 2] * voxel_size) + voxel_origin[0]
-
-    num_samples = N ** 3
-
-    samples.requires_grad = False
-
-    head = 0
-
-    while head < num_samples:
-        sample_subset = samples[head : min(head + max_batch, num_samples), 0:3].cuda()
-
-        samples[head : min(head + max_batch, num_samples), 3] = (
-            decode_sdf(decoder, embd_xyz, sample_subset)
-            .squeeze(1)
-            .detach()
-            .cpu()
-        )
-        head += max_batch
-
-    sdf_values = samples[:, 3]
-    sdf_values = sdf_values.reshape(N, N, N)
-
-    end = time.time()
-    print("sampling takes: %f" % (end - start))
-
-    convert_sdf_samples_to_ply(
-        sdf_values.data.cpu(),
-        voxel_origin,
-        voxel_size,
-        ply_filename + ".ply",
-        offset,
-        scale,
-    )
+import paddle
 
 
 def convert_sdf_samples_to_ply(
-    pytorch_3d_sdf_tensor,
+    p3d_sdf_tensor,
     voxel_grid_origin,
     voxel_size,
     ply_filename_out,
@@ -94,7 +22,7 @@ def convert_sdf_samples_to_ply(
     """
     Convert sdf samples to .ply
 
-    :param pytorch_3d_sdf_tensor: a torch.FloatTensor of shape (n,n,n)
+    :param p3d_sdf_tensor: a torch.FloatTensor of shape (n,n,n)
     :voxel_grid_origin: a list of three floats: the bottom, left, down origin of the voxel grid
     :voxel_size: float, the size of the voxels
     :ply_filename_out: string, path of the filename to save to
@@ -103,7 +31,7 @@ def convert_sdf_samples_to_ply(
     """
     start_time = time.time()
 
-    numpy_3d_sdf_tensor = pytorch_3d_sdf_tensor.numpy()
+    numpy_3d_sdf_tensor = p3d_sdf_tensor.numpy()
 
     verts, faces, normals, values = skimage.measure.marching_cubes_lewiner(
         numpy_3d_sdf_tensor, level=0.0, spacing=[voxel_size] * 3
@@ -154,26 +82,6 @@ def GenMeshfromSDF(grid_final,bounding_radius,path):
     voxel_origin = [-bounding_radius, -bounding_radius, -bounding_radius]
     N = grid_final.size(0)
     voxel_size = 2 * bounding_radius / (N - 1)
-
-    overall_index = torch.arange(0, N ** 3, 1, out=torch.LongTensor())
-    samples = torch.zeros(N ** 3, 3)
-
-    # transform first 3 columns
-    # to be the x, y, z index
-    samples[:, 2] = overall_index % N
-    samples[:, 1] = (overall_index.long() // N) % N
-    samples[:, 0] = ((overall_index.long() // N) // N) % N
-
-    # transform first 3 columns
-    # to be the x, y, z coordinate
-    samples[:, 0] = (samples[:, 0] * voxel_size) + voxel_origin[0]
-    samples[:, 1] = (samples[:, 1] * voxel_size) + voxel_origin[1]
-    samples[:, 2] = (samples[:, 2] * voxel_size) + voxel_origin[2]
-    samples = torch.cat((samples, grid_final.reshape(-1, 1).cpu()), dim=1)
-
-    num_samples = N ** 3
-
-    # samples.requires_grad = False
 
     convert_sdf_samples_to_ply(
         grid_final.data.cpu(),
