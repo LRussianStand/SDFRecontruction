@@ -379,85 +379,85 @@ def get_fine_pos_and_normal_bs(batchsize, width, height, bounding_box_min_x, bou
 
     # Get the x-axis of normal vectors for the 8 points of the intersecting voxel
     # This line is equivalent to grid_normal_x[x,y,z]
-    x1 = paddle.index_select(grid_normal_x.view(-1), 0,
-                            z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
+    x1 = paddle.index_select(grid_normal_x.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
         x.shape).unsqueeze_(3)
-    x2 = paddle.index_select(grid_normal_x.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
+    x2 = paddle.index_select(grid_normal_x.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
         x.shape).unsqueeze_(3)
-    x3 = paddle.index_select(grid_normal_x.view(-1), 0,
-                            z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
+    x3 = paddle.index_select(grid_normal_x.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
         x.shape).unsqueeze_(3)
-    x4 = paddle.index_select(grid_normal_x.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(
+    x4 = paddle.index_select(grid_normal_x.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(
                                 -1)).view(x.shape).unsqueeze_(3)
-    x5 = paddle.index_select(grid_normal_x.view(-1), 0,
-                            z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(-1)).view(
+    x5 = paddle.index_select(grid_normal_x.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(-1)).view(
         x.shape).unsqueeze_(3)
-    x6 = paddle.index_select(grid_normal_x.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(
+    x6 = paddle.index_select(grid_normal_x.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(
                                 -1)).view(x.shape).unsqueeze_(3)
-    x7 = paddle.index_select(grid_normal_x.view(-1), 0,
-                            z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
+    x7 = paddle.index_select(grid_normal_x.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
                                 -1)).view(x.shape).unsqueeze_(3)
-    x8 = paddle.index_select(grid_normal_x.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
+    x8 = paddle.index_select(grid_normal_x.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
                                 -1)).view(x.shape).unsqueeze_(3)
     intersection_grid_normal_x = paddle.cat((x1, x2, x3, x4, x5, x6, x7, x8), 3) + (
             1 - mask.view(batchsize,height, width, 1).repeat(1,1, 1, 8))
 
     # Get the y-axis of normal vectors for the 8 points of the intersecting voxel
-    y1 = paddle.index_select(grid_normal_y.view(-1), 0,
-                            z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
+    y1 = paddle.index_select(grid_normal_y.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
         x.shape).unsqueeze_(3)
-    y2 = paddle.index_select(grid_normal_y.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
+    y2 = paddle.index_select(grid_normal_y.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
         x.shape).unsqueeze_(3)
-    y3 = paddle.index_select(grid_normal_y.view(-1), 0,
-                            z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
+    y3 = paddle.index_select(grid_normal_y.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
         x.shape).unsqueeze_(3)
-    y4 = paddle.index_select(grid_normal_y.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(
+    y4 = paddle.index_select(grid_normal_y.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(
                                 -1)).view(x.shape).unsqueeze_(3)
-    y5 = paddle.index_select(grid_normal_y.view(-1), 0,
-                            z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(-1)).view(
+    y5 = paddle.index_select(grid_normal_y.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(-1)).view(
         x.shape).unsqueeze_(3)
-    y6 = paddle.index_select(grid_normal_y.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(
+    y6 = paddle.index_select(grid_normal_y.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(
                                 -1)).view(x.shape).unsqueeze_(3)
-    y7 = paddle.index_select(grid_normal_y.view(-1), 0,
-                            z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
+    y7 = paddle.index_select(grid_normal_y.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
                                 -1)).view(x.shape).unsqueeze_(3)
-    y8 = paddle.index_select(grid_normal_y.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
+    y8 = paddle.index_select(grid_normal_y.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
                                 -1)).view(x.shape).unsqueeze_(3)
     intersection_grid_normal_y = paddle.cat((y1, y2, y3, y4, y5, y6, y7, y8), 3) + (
             1 - mask.view(batchsize, height, width, 1).repeat(1, 1, 1, 8))
 
     # Get the z-axis of normal vectors for the 8 points of the intersecting voxel
-    z1 = paddle.index_select(grid_normal_z.view(-1), 0,
-                            z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
+    z1 = paddle.index_select(grid_normal_z.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
         x.shape).unsqueeze_(3)
-    z2 = paddle.index_select(grid_normal_z.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
+    z2 = paddle.index_select(grid_normal_z.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
         x.shape).unsqueeze_(3)
-    z3 = paddle.index_select(grid_normal_z.view(-1), 0,
-                            z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
+    z3 = paddle.index_select(grid_normal_z.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(-1)).view(
         x.shape).unsqueeze_(3)
-    z4 = paddle.index_select(grid_normal_z.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(
+    z4 = paddle.index_select(grid_normal_z.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * x.view(
                                 -1)).view(x.shape).unsqueeze_(3)
-    z5 = paddle.index_select(grid_normal_z.view(-1), 0,
-                            z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(-1)).view(
+    z5 = paddle.index_select(grid_normal_z.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(-1)).view(
                             x.shape).unsqueeze_(3)
-    z6 = paddle.index_select(grid_normal_z.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(
+    z6 = paddle.index_select(grid_normal_z.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * y.view(-1) + grid_res_x * grid_res_x * (x + 1).view(
                                 -1)).view(x.shape).unsqueeze_(3)
-    z7 = paddle.index_select(grid_normal_z.view(-1), 0,
-                            z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
+    z7 = paddle.index_select(grid_normal_z.view(-1), axis = 0,
+                            index = z.view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
                                 -1)).view(x.shape).unsqueeze_(3)
-    z8 = paddle.index_select(grid_normal_z.view(-1), 0,
-                            (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
+    z8 = paddle.index_select(grid_normal_z.view(-1), axis = 0,
+                            index = (z + 1).view(-1) + grid_res_x * (y + 1).view(-1) + grid_res_x * grid_res_x * (x + 1).view(
                                 -1)).view(x.shape).unsqueeze_(3)
     intersection_grid_normal_z = paddle.cat((z1, z2, z3, z4, z5, z6, z7, z8), 3) + (
             1 - mask.view(batchsize,height, width, 1).repeat(1, 1, 1, 8))
@@ -569,13 +569,13 @@ def sampleEnvLight_bs(l, envmap, envHeight, envWidth, batchsize, imHeight, imWid
     size_0 = envWidth * envHeight * batchsize
     envmap = envmap.reshape([size_0, channelNum])
     index = (v1 * envWidth + u2) + offset
-    envmap_ru = paddle.index_select(envmap, 0, index)
+    envmap_ru = paddle.index_select(envmap, axis = 0, index = index)
     index = (v2 * envWidth + u2) + offset
-    envmap_rd = paddle.index_select(envmap, 0, index)
+    envmap_rd = paddle.index_select(envmap, axis = 0, index = index)
     index = (v1 * envWidth + u1) + offset
-    envmap_lu = paddle.index_select(envmap, 0, index)
+    envmap_lu = paddle.index_select(envmap, axis = 0, index = index)
     index = (v2 * envWidth + u1) + offset
-    envmap_ld = paddle.index_select(envmap, 0, index)
+    envmap_ld = paddle.index_select(envmap, axis = 0, index = index)
 
     envmap_r = envmap_ru * w_u.expand_as(envmap_ru) + \
                envmap_rd * w_d.expand_as(envmap_rd)
