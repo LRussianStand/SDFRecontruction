@@ -10,10 +10,10 @@ import renderer
 import pytorch_ssim
 
 
-cuda = True if torch.cuda.is_available() else False
-print(cuda)
+# cuda = True if torch.cuda.is_available() else False
+# print(cuda)
 #
-Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+# Tensor = paddle.cuda.FloatTensor
 
 def grid_construction_sphere_small(grid_res, bounding_box_min, bounding_box_max,radius):
     # Construct the sdf grid for a sphere with radius 1
@@ -209,7 +209,7 @@ def generate_image_bs(bounding_box_min_x, bounding_box_min_y, bounding_box_min_z
     voxel_min_point_index = outputs[2]
     origin_image_distances = outputs[3]
     pixel_distances = outputs[4]
-    mask = (voxel_min_point_index[:, :, :, 0] != err_code).type(Tensor).unsqueeze(3)
+    mask = paddle.to_tensor((voxel_min_point_index[:, :, :, 0] != err_code), dtype='int64').unsqueeze(3)
 
     # get fine pos and normal
     intersection_pos1, intersection_normal1 = get_fine_pos_and_normal_bs(batchsize,width, height, bounding_box_min_x,
@@ -364,12 +364,12 @@ def get_fine_pos_and_normal_bs(batchsize, width, height, bounding_box_min_x, bou
                             grid_res_x, grid_res_y, grid_res_z, grid_normal_x, grid_normal_y, grid_normal_z,
                             ray_direction, intersection_pos_rough, voxel_min_point_index, error_code):
     # Make the pixels with no intersections with rays be 0
-    mask = (voxel_min_point_index[:, :, :, 0] != error_code).type(Tensor)
+    mask = paddle.to_tensor((voxel_min_point_index[:, :, :, 0] != error_code), dtype='int64').unsqueeze(3)
 
     # Get the indices of the minimum point of the intersecting voxels
-    x = voxel_min_point_index[:, :, :, 0].type(paddle.cuda.LongTensor)
-    y = voxel_min_point_index[:, :, :, 1].type(paddle.cuda.LongTensor)
-    z = voxel_min_point_index[:, :, :, 2].type(paddle.cuda.LongTensor)
+    x = paddle.to_tensor(voxel_min_point_index[:, :, :, 0], dtype='int64').unsqueeze(3)
+    z = paddle.to_tensor(voxel_min_point_index[:, :, :, 1], dtype='int64').unsqueeze(3)
+    y = paddle.to_tensor(voxel_min_point_index[:, :, :, 2], dtype='int64').unsqueeze(3)
     x[x == error_code] = 0
     y[y == error_code] = 0
     z[z == error_code] = 0
@@ -463,9 +463,7 @@ def get_fine_pos_and_normal_bs(batchsize, width, height, bounding_box_min_x, bou
             1 - mask.view(batchsize,height, width, 1).repeat(1, 1, 1, 8))
 
     # Change from grid coordinates to world coordinates
-    voxel_min_point = Tensor(
-        [bounding_box_min_x, bounding_box_min_y, bounding_box_min_z]) + voxel_min_point_index * voxel_size
-
+    voxel_min_point = paddle.to_tensor([bounding_box_min_x, bounding_box_min_y, bounding_box_min_z], dtype='int64') + voxel_min_point_index * voxel_size
     intersection_pos = compute_intersection_pos_bs(grid, intersection_pos_rough,
                                                 voxel_min_point, voxel_min_point_index,
                                                 ray_direction, voxel_size, mask,batchsize, width,height)
