@@ -2,14 +2,14 @@ from __future__ import print_function
 import argparse
 import paddle
 import time
-import sys, os
+import os
 import dataLoader
 from paddle.io import DataLoader
 from utils import *
-from mesh import create_mesh, convert_sdf_samples_to_ply, GenMeshfromSDF, CalChamferDis
+from mesh import create_mesh, GenMeshfromSDF, CalChamferDis
 import logging
 import os.path as osp
-from pytorch3d.renderer import cameras
+import cv2
 
 
 parser = argparse.ArgumentParser()
@@ -53,22 +53,14 @@ parser.add_argument('--wl', type=float, default=1, help='weight for laplacian lo
 parser.add_argument('--stepNum', type=int, default=1500, help='the step number for each iteration')
 
 paddle.set_printoptions(precision=8)
-#设置torch打印的精度
+#设置打印的精度
 opt = parser.parse_args()
 print(opt)
-
-# device = paddle.set_device('gpu:0')
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")#torch.Tensor分配到的设备
-
 dir_name = opt.experiment
 if not os.path.isdir(dir_name):
     os.mkdir(dir_name)
 if not os.path.isfile(opt.experiment + 'log.txt'):
     os.mknod(opt.experiment + 'log.txt')
-# logging.basicConfig(level=logging.WARNING,
-#                     filename= opt.experiment + 'log.txt',
-#                     filemode='w',
-#                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 logger = logging.getLogger()
 logger.setLevel('INFO')
 BASIC_FORMAT = "%(asctime)s:%(levelname)s:%(message)s"
@@ -102,31 +94,13 @@ if __name__ == "__main__":
     brdfLoader = DataLoader(brdfDataset, batch_size=1, num_workers=0, shuffle=False)
 
     j = 0
-
-    normal1ErrsNpList = np.ones([1, 2], dtype=np.float32)
-    meanAngle1ErrsNpList = np.ones([1, 2], dtype=np.float32)
-    medianAngle1ErrsNpList = np.ones([1, 2], dtype=np.float32)
-    normal2ErrsNpList = np.ones([1, 2], dtype=np.float32)
-    meanAngle2ErrsNpList = np.ones([1, 2], dtype=np.float32)
-    medianAngle2ErrsNpList = np.ones([1, 2], dtype=np.float32)
-    renderedErrsNpList = np.ones([1, 2], dtype=np.float32)
-
     epoch = opt.nepoch
-    # testingLog = open('{0}/testingLog_{1}.txt'.format(opt.testRoot, epoch), 'w')
     for i, dataBatch in enumerate(brdfLoader):
         j += 1
         # Load ground-truth from cpu to gpu
-        # normal1_cpu = dataBatch['normal1'].squeeze(0)
-        # normal1Batch = Variable(normal1_cpu).cuda()
 
         seg1_cpu = dataBatch['seg1'].squeeze(0)
         seg1Batch = seg1_cpu.cuda()
-
-        # normal2_cpu = dataBatch['normal2'].squeeze(0)
-        # normal2Batch = Variable(normal2_cpu).cuda()
-
-        # seg2_cpu = dataBatch['seg2'].squeeze(0)
-        # seg2Batch = Variable(seg2_cpu).cuda()
 
         # Load the image from cpu to gpu
         im_cpu = dataBatch['im'].squeeze(0)
@@ -174,40 +148,10 @@ if __name__ == "__main__":
         # ---------------------------------------------------------------------------------------------------------------
         # define the folder name for results
         channelNum = imBgBatch.shape[1]#3
-        # Speed up
-        # torch.backends.cudnn.benchmark = True
-        # change by m
-        # R, T = cameras.look_at_view_transform(eye=originBatch.cpu().numpy(), up=upBatch.cpu().numpy(),
-        #                                       at=lookatBatch.cpu().numpy())#, device=device
-        # focal_length_pixel = opt.imageWidth / 2 / (np.tan(opt.fov / 2 / 180 * np.pi))
-        # cameras_bs = cameras.PerspectiveCameras(focal_length=focal_length_pixel,
-        #                                         principal_point=np.tile(np.array((opt.imageWidth / 2, opt.imageHeight / 2)),
-        #                                                                 (opt.camNum, 1)), R=R, T=T,
-        #                                         image_size=np.tile(np.array((opt.imageWidth, opt.imageHeight)),
-        #                                                                 (opt.camNum, 1)))
-        # bs_coord = paddle.linspace(0,opt.camNum - 1,opt.camNum)
-        # bs_coord = paddle.reshape(bs_coord, [opt.camNum,1,1]).repeat((1,opt.imageHeight,opt.imageWidth)).long()
-
-
-        #test the camera projection
-        # verts_gt, faces_gt, aux_gt = load_obj('/mnt/data3/lj/transparent/Data/Shapes/test/Shape__0/object.obj')
-        # verts_gt = verts_gt.cuda().unsqueeze(0).repeat((opt.camNum,1,1))
-        # newpoints = cameras_bs.transform_points_screen(points=verts_gt,image_size=np.tile(np.array((opt.imageWidth, opt.imageHeight)),
-        #                                                                 (opt.camNum, 1)))
-        # new_x = newpoints[:,:,0].long()
-        # new_y = newpoints[:, :, 1].long()
-        # newmasks = paddle.zeros_like(seg1Batch)
-        # newmasks[paddle.linspace(0,opt.camNum - 1,opt.camNum).reshape(opt.camNum,1).repeat((1,new_y.size(1))).long(),paddle.zeros_like(new_y).long(),new_y,new_x] = 1
-        # torchvision.utils.save_image(newmasks,
-        #                              "./" + dir_name + "test.png", nrow=5,
-        #                              padding=2, normalize=False, range=None,
-        #                              scale_each=False, pad_value=0)
-
-
         cuda = True
         print(cuda)
-        paddle.to_tensor
-        # Tensor = torch.cuda.FloatTensor if cuda else paddle.FloatTensor
+        # paddle.to_tensor
+        # # Tensor = torch.cuda.FloatTensor if cuda else paddle.FloatTensor
         width = opt.imageWidth
         height = opt.imageHeight
 
@@ -232,6 +176,7 @@ if __name__ == "__main__":
                                                           opt.ball)  ####
         else:
             grid_initial = grid_gt.float()
+
         # set parameters
         sdf_diff_list = []
         time_list = []
@@ -248,36 +193,15 @@ if __name__ == "__main__":
         logger.info('visual hull dis %.8f' % (chamfer_dis))
         # Calculate the mask of the gt
         image_bg = getBackground_bs(batchSize, height, width, opt.fov, opt.envHeight, opt.envWidth, originBatch, lookatBatch, upBatch, envBatch.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
-        # mask_gt = paddle.abs(image_bg - imBgBatch)
-        # mask_gt = (paddle.sum(mask_gt,dim=1,keepdim=True) > 0.5).float()
+
         #
-        # mask_gt = ((1 - pytorch_ssim.ssim_image(image_bg,imBgBatch)) > 0.1).float()
-        # torchvision.utils.save_image(mask_gt,
-        #                              "./" + dir_name + "ssim_0.1.png", nrow=5,
-        #                              padding=2, normalize=False, range=None,
-        #                              scale_each=False, pad_value=0)
-        # mask_gt = ((1 - pytorch_ssim.ssim_image(image_bg,imBgBatch)) > 0).float()
-        # torchvision.utils.save_image(mask_gt,
-        #                              "./" + dir_name + "ssim_0.png", nrow=5,
-        #                              padding=2, normalize=False, range=None,
-        #                              scale_each=False, pad_value=0)
-        # mask_gt = ((1 - pytorch_ssim.ssim_image(image_bg,imBgBatch)) > -0.9).float()
-        # torchvision.utils.save_image(mask_gt,
-        #                              "./" + dir_name + "ssim_-0.9.png", nrow=5,
-        #                              padding=2, normalize=False, range=None,
-        #                              scale_each=False, pad_value=0)
-        # mask_gt = ((1 - pytorch_ssim.ssim_image(image_bg,imBgBatch)) > -0.8).float()
-        # torchvision.utils.save_image(mask_gt,
-        #                              "./" + dir_name + "ssim_-0.8.png", nrow=5,
-        #                              padding=2, normalize=False, range=None,
-        #                              scale_each=False, pad_value=0)
-        #
-        # watch_gt_bg = mask_gt.cpu().numpy()
-        #
-        torchvision.utils.save_image(image_bg, #"./" +
-                                       dir_name + "grid_res_" + str(grid_res_x) + "_bg.png", nrow=5,
-                                      padding=2, normalize=False, range=None,
-                                      scale_each=False, pad_value=0)
+        image_bgnp = image_bg.numpy()
+        for i in range(len(image_bgnp)):
+            cv2.imwrite(dir_name + "grid_" + str(i+1) + "_bg.png", image_bgnp[i])
+        # torchvision.utils.save_image(image_bg, #"./" +
+        #                                dir_name + "grid_res_" + str(grid_res_x) + "_bg.png", nrow=5,
+        #                               padding=2, normalize=False, range=None,
+        #                               scale_each=False, pad_value=0)
 
         # train
 
@@ -302,29 +226,20 @@ if __name__ == "__main__":
                                                                               opt.eta2, envBatch.permute(0, 2, 3, 1),
                                                                               opt.envHeight, opt.envWidth)
             image_initial = image_initial.permute(0, 3, 1, 2)
-            # image_initial = (paddle.clamp(refractImg2, 0, 1)).data.permute(0, 3, 1, 2)
-            torchvision.utils.save_image(image_initial,
-                                         "./" + dir_name + "grid_res_" + str(grid_res_x) + "_start.png", nrow=5,
-                                         padding=2, normalize=False, range=None,
-                                         scale_each=False, pad_value=0)
-            torchvision.utils.save_image(imBgBatch,
-                                         "./" + dir_name + "grid_res_" + str(grid_res_x) + "_gt.png", nrow=5, padding=2,
-                                         normalize=False, range=None,
-                                         scale_each=False, pad_value=0)
-            # torchvision.utils.save_image(paddle.abs(image_initial - imBgBatch),
-            #                              "./" + dir_name + "grid_res_" + str(grid_res_x) + "_diff.png", nrow=5,
-            #                              padding=2,
+            image_initialnp = image_initial.numpy()
+            for i in range(len(image_initialnp)):
+                cv2.imwrite("./" + dir_name + "grid_" + str(i + 1) + "_start.png", image_initialnp[i])
+            imBgBatchnp = imBgBatch.numpy()
+            for i in range(len(imBgBatchnp)):
+                cv2.imwrite("./" + dir_name + "grid_" + str(i + 1) + "_gt.png", imBgBatchnp[i])
+            # torchvision.utils.save_image(image_initial,
+            #                              "./" + dir_name + "grid_res_" + str(grid_res_x) + "_start.png", nrow=5,
+            #                              padding=2, normalize=False, range=None,
+            #                              scale_each=False, pad_value=0)
+            # torchvision.utils.save_image(imBgBatch,
+            #                              "./" + dir_name + "grid_res_" + str(grid_res_x) + "_gt.png", nrow=5, padding=2,
             #                              normalize=False, range=None,
             #                              scale_each=False, pad_value=0)
-            # torchvision.utils.save_image(seg1Batch,
-            #                              "./" + dir_name + "grid_res_" + str(grid_res_x) + "_seg.png", nrow=5,
-            #                              padding=2,
-            #                              normalize=False, range=None,
-            #                              scale_each=False, pad_value=0)
-
-            # watch_out = image_initial[0, :, :, :].data.cpu().numpy()
-            # watch_gt = imBgBatch[0, :, :, :].data.cpu().numpy()
-            # watch_diff = np.abs(watch_out - watch_gt)
 
             # deform initial SDf to target SDF
             i = 0
@@ -344,16 +259,6 @@ if __name__ == "__main__":
             coord_z = paddle.linspace(0, grid_res_z - 1, grid_res_z).cuda() * voxel_size + bounding_box_min_z
             grid_x,grid_y,grid_z = paddle.meshgrid([coord_x,coord_y,coord_z])
             grid_xyz = paddle.stack((grid_x,grid_y,grid_z),dim=-1)
-
-            # change by m
-            # grid_proj = cameras_bs.transform_points_screen(points=grid_xyz.repeat(opt.camNum,1,1,1,1).reshape(opt.camNum, -1, 3),
-            #                         image_size=np.tile(np.array((width, height)),(opt.camNum, 1))).reshape(opt.camNum,grid_res_x,grid_res_y,grid_res_z,3)
-            # grid_bs = paddle.linspace(0,opt.camNum - 1, opt.camNum).reshape(opt.camNum,1,1,1).repeat(1,grid_res_x,grid_res_y,grid_res_z).long()
-            # grid_mask_gt = (seg1Batch.permute(0,2,3,1).squeeze(-1)[grid_bs,grid_proj[:,:,:,:,1].long().clamp(0,opt.imageHeight - 1),opt.imageWidth - 1 - grid_proj[:,:,:,:,0].long().clamp(0,opt.imageWidth - 1)] == 1).float()
-            # grid_mask_gt = (grid_mask_gt.sum(dim = 0) > opt.camNum - 1)
-
-            #watch_grid_mask = grid_mask_gt.cpu().numpy()
-            #grid_proj_inside = (grid_proj[:,:,:,:,1] >= 0) * (grid_proj[:,:,:,:,1] <= opt.imageHeight - 1) * (grid_proj[:,:,:,:,0] >= 0) * (grid_proj[:,:,:,:,0] <= opt.imageWidth - 1)
 
 
             while (loss < average - tolerance / 2 or i < opt.stepNum):
@@ -397,8 +302,6 @@ if __name__ == "__main__":
                 Lp_loss = paddle.sum(F.conv3d(conv_input, conv_filter) ** 2) / (
                         grid_res_x * grid_res_y * grid_res_z * voxel_size * voxel_size)
 
-                # compute the chamfer loss
-                #cf_loss = loss_mask_chamfer_bs(seg1Batch.permute(0,2,3,1),mask,fine_pos,cameras_bs)
 
                 # get total loss
                 b = 10
@@ -406,7 +309,6 @@ if __name__ == "__main__":
                     b = 100
                 loss = opt.wi * image_loss + opt.ws * sdf_loss + opt.wl * Lp_loss
                 loss_camera = image_loss + sdf_loss
-                #loss = 100000 * cf_loss + 0.3 * sdf_loss + 0.1 * Lp_loss
 
                 # print out loss messages
                 print("lap loss:", Lp_loss.item())
@@ -415,53 +317,6 @@ if __name__ == "__main__":
                 loss.backward()
                 watch_grad_total = grid_initial.grad.cpu().numpy()
                 watch_grid = grid_initial.data.cpu().numpy()
-
-                # --------------------------------------------------------------------------------------------------
-                # the mask loss !!! [0,0,0] will be incorrectly optimized perhaps!!!
-                # if opt.maskloss:
-                #     a0 = grid_initial.grad[0, 0, 0].item()
-                #     a1 = grid_initial.grad[1, 0, 0].item()
-                #     a2 = grid_initial.grad[0, 1, 0].item()
-                #     a3 = grid_initial.grad[0, 0, 1].item()
-                #     mask_outside = ((mask.data - seg1Batch.permute(0, 2, 3, 1)) == 1).float()
-                #     out_min_index = inter_min_index * mask_outside
-                #     x = out_min_index[:, :, :, 0].type(paddle.cuda.LongTensor)
-                #     y = out_min_index[:, :, :, 1].type(paddle.cuda.LongTensor)
-                #     z = out_min_index[:, :, :, 2].type(paddle.cuda.LongTensor)
-                #
-                #     list_index = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [0, 1, 1], [1, 0, 1],
-                #                   [1, 1, 1]]
-                #     for m in list_index:
-                #         x1 = (x + m[0])
-                #         y1 = (y + m[1])
-                #         z1 = (z + m[2])
-                #         xw = x1 * voxel_size + bounding_box_min_x
-                #         yw = y1 * voxel_size + bounding_box_min_y
-                #         zw = z1 * voxel_size + bounding_box_min_z
-                #         newpoints = cameras_bs.transform_points_screen(points=paddle.stack((xw,yw,zw),dim=-1).reshape(opt.camNum,-1,3), image_size=np.tile(
-                #             np.array((opt.imageWidth, opt.imageHeight)),
-                #             (opt.camNum, 1))).reshape(opt.camNum,opt.imageHeight,opt.imageWidth,3)
-                #         new_x = opt.imageWidth - 1 - newpoints[:, :,:, 0].long().clamp(0,opt.imageWidth - 1)
-                #         new_y = newpoints[:, :, :,1].long().clamp(0,opt.imageHeight - 1)
-                #         mask_outside_index = (seg1Batch[bs_coord,paddle.zeros_like(new_y).long(),new_y,new_x]==0).long()
-                #         grid_initial.grad[x1 * mask_outside_index, y1*mask_outside_index, z1*mask_outside_index] = - opt.maskloss
-                #     grid_initial.grad[0,0,0] = a0
-                #     grid_initial.grad[1, 0, 0] = a1
-                #     grid_initial.grad[0, 1, 0] = a2
-                #     grid_initial.grad[0, 0, 1] = a3
-                # watch_grad_total = grid_initial.grad.cpu().numpy()
-                # if paddle.sum((x==0).float() * (y==0).float() * (z==0).float()).item() == 0:
-                #     grid_initial.grad[0,0,0] = a
-
-                # --------------------------------------------------------------------------------------------------
-                # the second enhanced mask loss!
-                # change by m
-                # if grid_res_z == opt.gridsize and opt.maskloss > 0:
-                #     grid_initial.grad = paddle.where((grid_initial.data <= 0) & ( paddle.logical_not(grid_mask_gt)),
-                #                                     - opt.maskloss * paddle.ones_like(grid_initial), grid_initial.grad)
-                #     grid_initial.grad = paddle.where((grid_initial.data > 0) & grid_mask_gt,
-                #                                     opt.maskloss * paddle.ones_like(grid_initial), grid_initial.grad)
-                #     watch_grad_total = grid_initial.grad.cpu().numpy()
 
                 optimizer.step()
                 if grid_res_x == opt.gridsize:
@@ -475,11 +330,16 @@ if __name__ == "__main__":
                 i += 1
 
                 if i % 100 == 0:
-                    torchvision.utils.save_image(image_initial,
-                                                 "./" + dir_name + "grid_res_" + str(grid_res_x) + "_" + str(
-                                                     i / 100) + ".png", nrow=5,
-                                                 padding=2, normalize=False, range=None,
-                                                 scale_each=False, pad_value=0)
+                    image_initial_np = image_initial.numpy()
+                    for i in range(len(image_initial_np)):
+                        cv2.imwrite("./" + dir_name + "grid_" + str(i + 1) +  "_" + str(
+                                                     i / 100) +  ".png", image_initial_np[i])
+
+                    # torchvision.utils.save_image(image_initial,
+                    #                              "./" + dir_name + "grid_res_" + str(grid_res_x) + "_" + str(
+                    #                                  i / 100) + ".png", nrow=5,
+                    #                              padding=2, normalize=False, range=None,
+                    #                              scale_each=False, pad_value=0)
 
             # genetate result images
             grid_initial.requires_grad = False
@@ -499,10 +359,13 @@ if __name__ == "__main__":
                                                                               opt.eta2, envBatch.permute(0, 2, 3, 1),
                                                                               opt.envHeight, opt.envWidth)
             image_initial = (paddle.clamp(image_initial, 0, 1)).data.permute(0, 3, 1, 2)
-            torchvision.utils.save_image(image_initial,
-                                         "./" + dir_name + "grid_res_" + str(grid_res_x) + "_final.png", nrow=5,
-                                         padding=2, normalize=False, range=None,
-                                         scale_each=False, pad_value=0)
+            image_initial_np = image_initial.numpy()
+            for i in range(len(image_initial_np)):
+                cv2.imwrite("./" + dir_name + "grid_" + str(i + 1) + "_final.png", image_initial_np[i])
+            # torchvision.utils.save_image(image_initial,
+            #                              "./" + dir_name + "grid_res_" + str(grid_res_x) + "_final.png", nrow=5,
+            #                              padding=2, normalize=False, range=None,
+            #                              scale_each=False, pad_value=0)
 
             # Save the final SDF result
             with open("./" + dir_name + str(grid_res_x) + ".pt", 'wb') as f:
